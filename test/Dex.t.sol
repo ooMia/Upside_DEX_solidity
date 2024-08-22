@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
-import "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import "../src/Dex.sol";
+import {Test} from "forge-std/Test.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Dex} from "src/Dex.sol";
 
 contract CustomERC20 is ERC20 {
     constructor(string memory tokenName) ERC20(tokenName, tokenName) {
