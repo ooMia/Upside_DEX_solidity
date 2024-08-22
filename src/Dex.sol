@@ -59,7 +59,7 @@ contract Dex is IDex {
         uint256 minLPReturn
     ) external override returns (uint256 lpAmount) {
         lpAmount = amountX < amountY ? amountX : amountY;
-        require(lpAmount >= minLPReturn, "Dex: minimum LP return");
+        require(lpAmount > 0 && lpAmount >= minLPReturn, "Invalid LP amount");
         require(
             tokenX.allowance(msg.sender, address(this)) >= lpAmount &&
                 tokenY.allowance(msg.sender, address(this)) >= lpAmount,
