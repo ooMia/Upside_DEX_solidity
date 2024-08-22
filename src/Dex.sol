@@ -80,6 +80,9 @@ contract Dex is IDex {
         uint256 minAmountX,
         uint256 minAmountY
     ) external override returns (uint256 rx, uint256 ry) {
+        rx = lpAmount;
+        ry = lpAmount;
+        require(rx >= minAmountX && ry >= minAmountY, "Invalid LP amount");
         tokenX.transfer(msg.sender, minAmountX);
         tokenY.transfer(msg.sender, minAmountY);
         lpBalances[msg.sender] -= lpAmount;
