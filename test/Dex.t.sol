@@ -11,10 +11,6 @@ contract CustomERC20 is ERC20 {
     }
 }
 
-/*
- * Contract에서 필요한 만큼(또는 요청한 만큼)의 자산을 가져가도록 구현되어있다는 것을 가정하였습니다.
- * (transferFrom을 통해)
- */
 contract DexTest is Test {
     Dex public dex;
     ERC20 tokenX;
@@ -26,6 +22,7 @@ contract DexTest is Test {
 
         dex = new Dex(address(tokenX), address(tokenY));
 
+        // DEX는 transferFrom을 통해 필요한 만큼의 자산을 가져갈 수 있습니다.
         tokenX.approve(address(dex), type(uint).max);
         tokenY.approve(address(dex), type(uint).max);
     }
