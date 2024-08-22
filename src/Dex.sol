@@ -3,6 +3,8 @@ pragma solidity ^0.8.13;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 interface IDex {
     /// @dev Add liquidity to the pool
     /// @param amountX Amount of token X to add
@@ -53,10 +55,10 @@ contract Dex is IDex {
         uint256 amountY,
         uint256 minLPReturn
     ) external override returns (uint256 lpAmount) {
-        lpAmount = amountX + amountY;
+        lpAmount = amountX < amountY ? amountX : amountY;
         require(lpAmount >= minLPReturn, "Dex: minimum LP return");
-        tokenX.transferFrom(msg.sender, address(this), amountX);
-        tokenY.transferFrom(msg.sender, address(this), amountY);
+        tokenX.transferFrom(msg.sender, address(this), lpAmount);
+        tokenY.transferFrom(msg.sender, address(this), lpAmount);
         tokenX.approve(msg.sender, lpAmount);
     }
 
