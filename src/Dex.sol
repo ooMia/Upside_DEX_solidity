@@ -1,7 +1,7 @@
 // IDex.sol
 pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 interface IDex {
     function addLiquidity(uint256 amount) external;
@@ -14,11 +14,12 @@ interface IDex {
 }
 
 contract Dex is IDex {
-    ERC20 tokenX;
-    ERC20 tokenY;
+    IERC20 tokenX;
+    IERC20 tokenY;
 
     constructor(address tokenA, address tokenB) {
-        // Implementation
+        tokenX = IERC20(tokenA);
+        tokenY = IERC20(tokenB);
     }
 
     function addLiquidity(uint256 amount) public override {
