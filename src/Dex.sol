@@ -10,10 +10,10 @@ interface IDex {
     /// @param minLPReturn Minimum amount of LP tokens to receive
     /// @return lpAmount Amount of LP tokens received
     function addLiquidity(
-        uint amountX,
-        uint amountY,
-        uint minLPReturn
-    ) external returns (uint lpAmount);
+        uint256 amountX,
+        uint256 amountY,
+        uint256 minLPReturn
+    ) external returns (uint256 lpAmount);
 
     /// @dev Remove liquidity from the pool
     /// @param lpAmount Amount of LP tokens to remove
@@ -22,10 +22,10 @@ interface IDex {
     /// @return rx Amount of token X received
     /// @return ry Amount of token Y received
     function removeLiquidity(
-        uint lpAmount,
-        uint minAmountX,
-        uint minAmountY
-    ) external returns (uint rx, uint ry);
+        uint256 lpAmount,
+        uint256 minAmountX,
+        uint256 minAmountY
+    ) external returns (uint256 rx, uint256 ry);
 
     /// @dev Swap tokens X <-> Y
     /// @param amountX Amount of token X to swap
@@ -33,10 +33,10 @@ interface IDex {
     /// @param minReturn Minimum amount of tokens to receive
     /// @return amount Amount of token that was swapped
     function swap(
-        uint amountX,
-        uint amountY,
-        uint minReturn
-    ) external returns (uint amount);
+        uint256 amountX,
+        uint256 amountY,
+        uint256 minReturn
+    ) external returns (uint256 amount);
 }
 
 contract Dex is IDex {
@@ -49,31 +49,32 @@ contract Dex is IDex {
     }
 
     function addLiquidity(
-        uint amountX,
-        uint amountY,
-        uint minLPReturn
-    ) external override returns (uint lpAmount) {
+        uint256 amountX,
+        uint256 amountY,
+        uint256 minLPReturn
+    ) external override returns (uint256 lpAmount) {
+        lpAmount = amountX + amountY;
+        require(lpAmount >= minLPReturn, "Dex: minimum LP return");
         tokenX.transferFrom(msg.sender, address(this), amountX);
         tokenY.transferFrom(msg.sender, address(this), amountY);
-        lpAmount = amountX + amountY;
         tokenX.approve(msg.sender, lpAmount);
     }
 
     function removeLiquidity(
-        uint lpAmount,
-        uint minAmountX,
-        uint minAmountY
-    ) external override returns (uint rx, uint ry) {
+        uint256 lpAmount,
+        uint256 minAmountX,
+        uint256 minAmountY
+    ) external override returns (uint256 rx, uint256 ry) {
         tokenX.transfer(msg.sender, minAmountX);
         tokenY.transfer(msg.sender, minAmountY);
         tokenX.approve(msg.sender, lpAmount);
     }
 
     function swap(
-        uint amountX,
-        uint amountY,
-        uint minReturn
-    ) external override returns (uint amount) {
+        uint256 amountX,
+        uint256 amountY,
+        uint256 minReturn
+    ) external override returns (uint256 amount) {
         tokenX.transferFrom(msg.sender, address(this), amountX);
         tokenY.transfer(msg.sender, amountY);
         tokenX.approve(msg.sender, amount);
