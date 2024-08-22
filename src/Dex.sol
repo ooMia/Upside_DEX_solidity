@@ -45,7 +45,10 @@ contract Dex is IDex {
     IERC20 tokenX;
     IERC20 tokenY;
 
+    mapping(address => uint256) public lpBalances;
+
     constructor(address tokenA, address tokenB) {
+        // transferFrom으로 필요한 자산을 가져올 수 있습니다.
         tokenX = IERC20(tokenA);
         tokenY = IERC20(tokenB);
     }
@@ -57,9 +60,19 @@ contract Dex is IDex {
     ) external override returns (uint256 lpAmount) {
         lpAmount = amountX < amountY ? amountX : amountY;
         require(lpAmount >= minLPReturn, "Dex: minimum LP return");
+        require(
+            tokenX.allowance(msg.sender, address(this)) >= lpAmount &&
+                tokenY.allowance(msg.sender, address(this)) >= lpAmount,
+            "ERC20: insufficient allowance"
+        );
+        require(
+            tokenX.balanceOf(msg.sender) >= amountX &&
+                tokenY.balanceOf(msg.sender) >= amountY,
+            "ERC20: transfer amount exceeds balance"
+        );
         tokenX.transferFrom(msg.sender, address(this), lpAmount);
         tokenY.transferFrom(msg.sender, address(this), lpAmount);
-        tokenX.approve(msg.sender, lpAmount);
+        lpBalances[msg.sender] += lpAmount;
     }
 
     function removeLiquidity(
@@ -69,7 +82,7 @@ contract Dex is IDex {
     ) external override returns (uint256 rx, uint256 ry) {
         tokenX.transfer(msg.sender, minAmountX);
         tokenY.transfer(msg.sender, minAmountY);
-        tokenX.approve(msg.sender, lpAmount);
+        lpBalances[msg.sender] -= lpAmount;
     }
 
     function swap(
