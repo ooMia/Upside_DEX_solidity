@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IDex {
     /// @dev Add liquidity to the pool
@@ -56,14 +56,28 @@ contract Dex is IDex {
         tokenY = IERC20(tokenB);
     }
 
+    modifier refresh() {
+        balanceX = Math.max(balanceX, tokenX.balanceOf(address(this)));
+        balanceY = Math.max(balanceY, tokenY.balanceOf(address(this)));
+        _;
+    }
+
     function addLiquidity(
         uint256 amountX,
         uint256 amountY,
         uint256 minLPReturn
-    ) external override returns (uint256 lpAmount) {
-        lpAmount = amountX < amountY ? amountX : amountY;
+    ) external override refresh returns (uint256 lpAmount) {
+        // 유동성 풀의 비율과 일치하는지 확인합니다.
+
+        require(balanceX / amountX == balanceY / amountY, "Invalid pool ratio");
+
         balanceX += amountX;
         balanceY += amountY;
+
+        // 유동성 풀의 비율에 맞게 자산을 분배합니다.
+
+        lpAmount = (amountX + amountY) / 2;
+
         lpBalances[msg.sender] += lpAmount;
 
         require(lpAmount > 0 && lpAmount >= minLPReturn, "Invalid LP amount");
@@ -77,30 +91,35 @@ contract Dex is IDex {
                 tokenY.balanceOf(msg.sender) >= amountY,
             "ERC20: transfer amount exceeds balance"
         );
-        tokenX.transferFrom(msg.sender, address(this), lpAmount);
-        tokenY.transferFrom(msg.sender, address(this), lpAmount);
+        tokenX.transferFrom(msg.sender, address(this), amountX);
+        tokenY.transferFrom(msg.sender, address(this), amountY);
+
+        // lpAmount = lpBalances[msg.sender];
     }
 
     function removeLiquidity(
         uint256 lpAmount,
         uint256 minAmountX,
         uint256 minAmountY
-    ) external override returns (uint256 rx, uint256 ry) {
-        balanceX -= lpAmount;
-        balanceY -= lpAmount;
-        rx = lpAmount;
-        ry = lpAmount;
+    ) external override refresh returns (uint256 rx, uint256 ry) {
+        // 유동성 풀의 비율에 맞게 자산을 분배합니다.
+
+        rx = (lpAmount * balanceX) / balanceY;
+        ry = (lpAmount * balanceY) / balanceX;
+
+        balanceX -= rx;
+        balanceY -= ry;
+        lpBalances[msg.sender] -= lpAmount;
         require(rx >= minAmountX && ry >= minAmountY, "Invalid LP amount");
         tokenX.transfer(msg.sender, minAmountX);
         tokenY.transfer(msg.sender, minAmountY);
-        lpBalances[msg.sender] -= lpAmount;
     }
 
     function swap(
         uint256 amountX,
         uint256 amountY,
         uint256 minReturn
-    ) external override returns (uint256 amount) {
+    ) external override refresh returns (uint256 amount) {
         if (amountY == 0 && amountX > 0) {
             amount = swapX(amountX);
         } else if (amountX == 0 && amountY > 0) {
