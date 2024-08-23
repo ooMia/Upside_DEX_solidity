@@ -47,6 +47,9 @@ contract Dex is IDex {
 
     mapping(address => uint256) public lpBalances;
 
+    uint internal balanceX;
+    uint internal balanceY;
+
     constructor(address tokenA, address tokenB) {
         // transferFrom으로 필요한 자산을 가져올 수 있습니다.
         tokenX = IERC20(tokenA);
@@ -59,6 +62,10 @@ contract Dex is IDex {
         uint256 minLPReturn
     ) external override returns (uint256 lpAmount) {
         lpAmount = amountX < amountY ? amountX : amountY;
+        balanceX += amountX;
+        balanceY += amountY;
+        lpBalances[msg.sender] += lpAmount;
+
         require(lpAmount > 0 && lpAmount >= minLPReturn, "Invalid LP amount");
         require(
             tokenX.allowance(msg.sender, address(this)) >= lpAmount &&
@@ -72,7 +79,6 @@ contract Dex is IDex {
         );
         tokenX.transferFrom(msg.sender, address(this), lpAmount);
         tokenY.transferFrom(msg.sender, address(this), lpAmount);
-        lpBalances[msg.sender] += lpAmount;
     }
 
     function removeLiquidity(
@@ -80,6 +86,8 @@ contract Dex is IDex {
         uint256 minAmountX,
         uint256 minAmountY
     ) external override returns (uint256 rx, uint256 ry) {
+        balanceX -= lpAmount;
+        balanceY -= lpAmount;
         rx = lpAmount;
         ry = lpAmount;
         require(rx >= minAmountX && ry >= minAmountY, "Invalid LP amount");
@@ -93,8 +101,30 @@ contract Dex is IDex {
         uint256 amountY,
         uint256 minReturn
     ) external override returns (uint256 amount) {
-        tokenX.transferFrom(msg.sender, address(this), amountX);
-        tokenY.transfer(msg.sender, amountY);
-        tokenX.approve(msg.sender, amount);
+        if (amountX > 0) {
+            amount = swapX(amountX);
+        } else if (amountY > 0) {
+            amount = swapY(amountY);
+        } else {
+            revert("Invalid swap amount");
+        }
+        require(amount >= minReturn, "Invalid swap amount");
+    }
+
+    function swapX(uint256 amountIn) internal returns (uint256 amount) {
+        amount = balanceY - (balanceX * balanceY) / (balanceX + amountIn);
+        amount = (amount * 999) / 1000;
+
+        tokenX.transferFrom(msg.sender, address(this), amountIn);
+        tokenY.transfer(msg.sender, amount);
+    }
+
+    function swapY(uint256 amountIn) internal returns (uint256 amount) {
+        // in case of swap Y -> X
+        amount = balanceX - (balanceY * balanceX) / (balanceY + amountIn);
+        amount = (amount * 999) / 1000;
+
+        tokenY.transferFrom(msg.sender, address(this), amountIn);
+        tokenX.transfer(msg.sender, amount);
     }
 }
