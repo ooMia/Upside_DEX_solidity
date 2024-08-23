@@ -101,9 +101,9 @@ contract Dex is IDex {
         uint256 amountY,
         uint256 minReturn
     ) external override returns (uint256 amount) {
-        if (amountX > 0) {
+        if (amountY == 0 && amountX > 0) {
             amount = swapX(amountX);
-        } else if (amountY > 0) {
+        } else if (amountX == 0 && amountY > 0) {
             amount = swapY(amountY);
         } else {
             revert("Invalid swap amount");
