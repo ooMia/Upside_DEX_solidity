@@ -46,24 +46,20 @@ contract Dex is IDex {
     IERC20 tokenY;
 
     mapping(address => uint256) public lpBalances;
-    uint public totalLp;
 
-    uint internal bx;
-    uint internal by;
     int internal dx;
     int internal dy;
     uint internal balanceX;
     uint internal balanceY;
 
     constructor(address tokenA, address tokenB) {
-        // transferFrom으로 필요한 자산을 가져올 수 있습니다.
         tokenX = IERC20(tokenA);
         tokenY = IERC20(tokenB);
     }
 
     modifier refresh() {
-        bx = tokenX.balanceOf(address(this));
-        by = tokenY.balanceOf(address(this));
+        uint bx = tokenX.balanceOf(address(this));
+        uint by = tokenY.balanceOf(address(this));
         dx = bx != 0
             ? bx > balanceX
                 ? int(bx - balanceX)
@@ -92,10 +88,9 @@ contract Dex is IDex {
         // 유동성 풀의 비율에 맞게 자산을 분배합니다.
         // token.transfer 변경분을 계산합니다.
         lpAmount = Math.max(uint(int(amountX) + dy), uint(int(amountY) + dx));
-
-        lpBalances[msg.sender] += lpAmount;
-
         require(lpAmount > 0 && lpAmount >= minLPReturn, "Invalid LP amount");
+
+        // 토큰을 전송합니다.
         require(
             tokenX.allowance(msg.sender, address(this)) >= lpAmount &&
                 tokenY.allowance(msg.sender, address(this)) >= lpAmount,
@@ -108,6 +103,7 @@ contract Dex is IDex {
         );
         tokenX.transferFrom(msg.sender, address(this), amountX);
         tokenY.transferFrom(msg.sender, address(this), amountY);
+        lpBalances[msg.sender] += lpAmount;
     }
 
     function removeLiquidity(
@@ -120,12 +116,12 @@ contract Dex is IDex {
         // 테스트에서는 단일 유저의 행동만을 고려하므로 간단하게 처리합니다.
         rx = (balanceX * lpAmount) / lpBalances[msg.sender];
         ry = (balanceY * lpAmount) / lpBalances[msg.sender];
+        require(rx >= minAmountX && ry >= minAmountY, "Invalid LP amount");
         balanceX -= rx;
         balanceY -= ry;
         lpBalances[msg.sender] -= lpAmount;
         tokenX.transfer(msg.sender, rx);
         tokenY.transfer(msg.sender, ry);
-        require(rx >= minAmountX && ry >= minAmountY, "Invalid LP amount");
     }
 
     function swap(
