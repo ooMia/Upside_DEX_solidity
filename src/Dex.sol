@@ -90,11 +90,8 @@ contract Dex is IDex {
         balanceY += amountY;
 
         // 유동성 풀의 비율에 맞게 자산을 분배합니다.
-
-        // lpAmount = (amountX + amountY) / 2;
-        // lpAmount = Math.max(uint(int(amountX) + dx), amountY);
-        // lpAmount = Math.max(amountX, amountY);
-        lpAmount = Math.max(uint(int(amountY) + dx), amountX);
+        // token.transfer 변경분을 계산합니다.
+        lpAmount = Math.max(uint(int(amountX) + dy), uint(int(amountY) + dx));
 
         lpBalances[msg.sender] += lpAmount;
 
@@ -123,8 +120,6 @@ contract Dex is IDex {
         // 테스트에서는 단일 유저의 행동만을 고려하므로 간단하게 처리합니다.
         rx = (balanceX * lpAmount) / lpBalances[msg.sender];
         ry = (balanceY * lpAmount) / lpBalances[msg.sender];
-        // rx = lpAmount;
-        // ry = lpAmount;
         balanceX -= rx;
         balanceY -= ry;
         lpBalances[msg.sender] -= lpAmount;
@@ -137,7 +132,7 @@ contract Dex is IDex {
         uint256 amountX,
         uint256 amountY,
         uint256 minReturn
-    ) external override refresh returns (uint256 amount) {
+    ) external override returns (uint256 amount) {
         if (amountY == 0 && amountX > 0) {
             amount = swapX(amountX);
         } else if (amountX == 0 && amountY > 0) {
