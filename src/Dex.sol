@@ -82,9 +82,6 @@ contract Dex is IDex {
     ) external override refresh returns (uint256 lpAmount) {
         // 유동성 풀의 비율과 일치하는지 확인합니다.
         require(balanceX / amountX == balanceY / amountY);
-        balanceX += amountX;
-        balanceY += amountY;
-
         // 유동성 풀의 비율에 맞게 자산을 분배합니다.
         // token.transfer 변경분을 계산합니다.
         lpAmount = Math.max(uint(int(amountX) + dy), uint(int(amountY) + dx));
@@ -101,9 +98,11 @@ contract Dex is IDex {
                 tokenY.balanceOf(msg.sender) >= amountY,
             "ERC20: transfer amount exceeds balance"
         );
+        balanceX += amountX;
+        balanceY += amountY;
+        lpBalances[msg.sender] += lpAmount;
         tokenX.transferFrom(msg.sender, address(this), amountX);
         tokenY.transferFrom(msg.sender, address(this), amountY);
-        lpBalances[msg.sender] += lpAmount;
     }
 
     function removeLiquidity(
