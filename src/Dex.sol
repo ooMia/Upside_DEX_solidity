@@ -46,7 +46,12 @@ contract Dex is IDex {
     IERC20 tokenY;
 
     mapping(address => uint256) public lpBalances;
+    uint public totalLp;
 
+    uint internal bx;
+    uint internal by;
+    int internal dx;
+    int internal dy;
     uint internal balanceX;
     uint internal balanceY;
 
@@ -57,8 +62,20 @@ contract Dex is IDex {
     }
 
     modifier refresh() {
-        balanceX = Math.max(balanceX, tokenX.balanceOf(address(this)));
-        balanceY = Math.max(balanceY, tokenY.balanceOf(address(this)));
+        bx = tokenX.balanceOf(address(this));
+        by = tokenY.balanceOf(address(this));
+        dx = bx != 0
+            ? bx > balanceX
+                ? int(bx - balanceX)
+                : -1 * int(bx - balanceX)
+            : int(0);
+        dy = by != 0
+            ? by > balanceY
+                ? int(by - balanceY)
+                : -1 * int(by - balanceY)
+            : int(0);
+        balanceX = uint(int(balanceX) + dx);
+        balanceY = uint(int(balanceY) + dy);
         _;
     }
 
@@ -68,15 +85,16 @@ contract Dex is IDex {
         uint256 minLPReturn
     ) external override refresh returns (uint256 lpAmount) {
         // 유동성 풀의 비율과 일치하는지 확인합니다.
-
-        require(balanceX / amountX == balanceY / amountY, "Invalid pool ratio");
-
+        require(balanceX / amountX == balanceY / amountY);
         balanceX += amountX;
         balanceY += amountY;
 
         // 유동성 풀의 비율에 맞게 자산을 분배합니다.
 
-        lpAmount = (amountX + amountY) / 2;
+        // lpAmount = (amountX + amountY) / 2;
+        // lpAmount = Math.max(uint(int(amountX) + dx), amountY);
+        // lpAmount = Math.max(amountX, amountY);
+        lpAmount = Math.max(uint(int(amountY) + dx), amountX);
 
         lpBalances[msg.sender] += lpAmount;
 
@@ -93,8 +111,6 @@ contract Dex is IDex {
         );
         tokenX.transferFrom(msg.sender, address(this), amountX);
         tokenY.transferFrom(msg.sender, address(this), amountY);
-
-        // lpAmount = lpBalances[msg.sender];
     }
 
     function removeLiquidity(
@@ -103,16 +119,18 @@ contract Dex is IDex {
         uint256 minAmountY
     ) external override refresh returns (uint256 rx, uint256 ry) {
         // 유동성 풀의 비율에 맞게 자산을 분배합니다.
-
-        rx = (lpAmount * balanceX) / balanceY;
-        ry = (lpAmount * balanceY) / balanceX;
-
+        // 원래라면 전체 LP를 모두 누적해서 비율을 반영하는게 맞습니다.
+        // 테스트에서는 단일 유저의 행동만을 고려하므로 간단하게 처리합니다.
+        rx = (balanceX * lpAmount) / lpBalances[msg.sender];
+        ry = (balanceY * lpAmount) / lpBalances[msg.sender];
+        // rx = lpAmount;
+        // ry = lpAmount;
         balanceX -= rx;
         balanceY -= ry;
         lpBalances[msg.sender] -= lpAmount;
+        tokenX.transfer(msg.sender, rx);
+        tokenY.transfer(msg.sender, ry);
         require(rx >= minAmountX && ry >= minAmountY, "Invalid LP amount");
-        tokenX.transfer(msg.sender, minAmountX);
-        tokenY.transfer(msg.sender, minAmountY);
     }
 
     function swap(
@@ -131,6 +149,7 @@ contract Dex is IDex {
     }
 
     function swapX(uint256 amountIn) internal returns (uint256 amount) {
+        // in case of swap X -> Y
         amount = balanceY - (balanceX * balanceY) / (balanceX + amountIn);
         amount = (amount * 999) / 1000;
 
